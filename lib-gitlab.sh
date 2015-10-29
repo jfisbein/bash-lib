@@ -14,19 +14,14 @@ function lib-gitlab-init() {
 # return: id of the project, 0 if the project is not found
 function getProjectId() {
 	local PROJECT_NAME="$1"
-	local RESPONSE=`curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/search/$PROJECT_NAME"`
+	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/search/$PROJECT_NAME")
 	if [[ $RESPONSE == "[]" ]]; then
 		local PROJECT_ID=0
 	else
-		local PROJECT_NAME=`echo "$RESPONSE" | python -c 'import sys,json;data=json.loads(sys.stdin.read()); print data[0]["name"]' 2> /dev/null`
-		if [[ "$PROJECT_NAME" == "$1" ]]; then
-			PROJECT_ID=`echo "$RESPONSE" | python -c 'import sys,json;data=json.loads(sys.stdin.read()); print data[0]["id"]' 2> /dev/null`
-		else
-			PROJECT_ID=0
-		fi
+		PROJECT_ID=$(echo "$RESPONSE" | jq ".[0].id")
 	fi
 
-	return $PROJECT_ID
+	echo $PROJECT_ID
 }
 
 # Finds a group by Name and returns the id
@@ -35,16 +30,16 @@ function getProjectId() {
 function getGroupId() {
 	local GROUP_NAME=$1
 
-	local RESPONSE=`curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups" | json_pp`
+	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups" | json_pp)
 
-	local GROUP_ID=`echo "$RESPONSE" | grep -A3 "\"name\" : \"$GROUP_NAME\"" | grep '"id" : ' | sed 's/"id" : //' | tr -d ' '`
+	local GROUP_ID=$(echo "$RESPONSE" |  jq ".[] | select (.name==\"$GROUP_NAME\") | .id")
 
-	return $GROUP_ID
+	echo $GROUP_ID
 }
 
 # Get the name sof all available groups
 function getGroupNames() {
-	local RESPONSE=`curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups"`
+	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups")
 
 	echo "$RESPONSE" | jq -r ".[].name"
 }
@@ -54,9 +49,9 @@ function getGroupNames() {
 function getProjectMembers() {
 	local PROJECT_ID="$1"
 
-	local RESPONSE=`curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID/members"`
+	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID/members")
 
-	echo "Response: $RESPONSE"
+	echo "$RESPONSE"
 }
 
 # Find a project by name and returns the group id
@@ -65,9 +60,9 @@ function getProjectMembers() {
 function getProjectGroupId() {
 	local PROJECT_ID="$1"
 
-	local RESPONSE=`curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID"`
+	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID")
 
-	local GROUP_ID=`echo "$RESPONSE" | python -c 'import sys,json;data=json.loads(sys.stdin.read()); print data["owner"]["id"]' 2> /dev/null`
+	local GROUP_ID=$(echo "$RESPONSE" | jq ".namespace.id")
 
 	return $GROUP_ID
 }
@@ -77,11 +72,9 @@ function getProjectGroupId() {
 function getGroupMembers() {
 	local GROUP_ID="$1"
 
-	local RESPONSE=`curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups/$GROUP_ID/members"`
+	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups/$GROUP_ID/members")
 
-	local RESPONSE=`echo "$RESPONSE" | json_pp`
-
-	echo "$RESPONSE"
+	echo "$RESPONSE" | jq "."
 }
 
 # Adds a web hook to a project
@@ -119,7 +112,7 @@ function createProjectHook() {
 
 	DATA="$DATA}"
 
-	local RESPONSE=`curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/projects/$PROJECT_ID/hooks"`
+	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/projects/$PROJECT_ID/hooks")
 
 	if [[ "$RESPONSE" != *"message"* ]]; then
 		local HOOK_ID=$(echo $RESPONSE | jq ".id")
@@ -137,28 +130,33 @@ function createProject() {
 	local GROUP_NAME="$1"
 	local PROJECT_NAME="$2"
 	local CREATE_HOOK=${3:-true}
+	local PROJECT_ID=0
 
 	local GROUP_ID=$(getGroupId "$GROUP_NAME")
 
-	local DATA="{\"name\": \"$PROJECT_NAME\""
-	DATA="$DATA, \"namespace_id\": \"$GROUP_ID\""
-	DATA="$DATA, \"public\":\"true\", \"issues_enabled\":\"false\", \"merge_requests_enabled\":\"true\"}"
+	if [[ "$GROUP_ID" != "" ]]; then
+		local DATA="{\"name\": \"$PROJECT_NAME\""
+		DATA="$DATA, \"namespace_id\": \"$GROUP_ID\""
+		DATA="$DATA, \"public\":\"true\", \"issues_enabled\":\"false\", \"merge_requests_enabled\":\"true\"}"
 
-	local RESPONSE=`curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/projects"`
+		local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/projects")
 
-	local MESSAGE=`echo "$RESPONSE" | python -c 'import sys,json;data=json.loads(sys.stdin.read()); print data["message"]' 2> /dev/null`
-	if [[ "$MESSAGE" != "" ]]; then
-		echo -e "$ESC_KO Error: $MESSAGE $ESC_DEFAULT"
-		local PROJECT_ID=0
-	else
-		local PROJECT_ID=`echo "$RESPONSE" | python -c 'import sys,json;data=json.loads(sys.stdin.read()); print data["id"]' 2> /dev/null`
-		if $CREATE_HOOK; then
-			local HOOK_ID=$(createProjectHook $PROJECT_ID "http://jenkins.fon.ofi:8080/gitlab/build_now" true false true true)
-			log "Created hook $HOOK_ID for project $PROJECT_NAME"
+		local MESSAGE=$(echo "$RESPONSE" | jq ".message")
+		if [[ "$MESSAGE" != "" ]]; then
+			log_error "$(echo "$MESSAGE" | jq -r "if . | length > 1 then .name[0] else . end")"
+			PROJECT_ID=0
+		else
+			PROJECT_ID=$(echo "$RESPONSE" | jq ".id")
+			if $CREATE_HOOK; then
+				local HOOK_ID=$(createProjectHook $PROJECT_ID "http://jenkins.fon.ofi:8080/gitlab/build_now" true false true true)
+				log "Created hook $HOOK_ID for project $PROJECT_NAME"
+			fi
 		fi
+	else
+		log_error "Group $GROUP_NAME does not exist"
 	fi
 
-	echo "$PROJECT_ID"
+	return "$PROJECT_ID"
 }
 
 # Gets git repository URL
@@ -166,14 +164,7 @@ function createProject() {
 # return: git repository URL
 function getGitUrl() {
 	local PROJECT_ID=$1
-	local RESPONSE=`curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID"`
-	local MESSAGE=`echo "$RESPONSE" | python -c 'import sys,json;data=json.loads(sys.stdin.read()); if data["message"]:print data["message"]' 2> /dev/null`
-	if [[ "$MESSAGE" != "" ]]; then
-		echo -e "$ESC_KO Error: $MESSAGE $ESC_DEFAULT"
-		local GIT_REPO_URL=""
-	else
-		local GIT_REPO_URL=`echo "$RESPONSE" | python -c 'import sys,json;data=json.loads(sys.stdin.read()); print data["ssh_url_to_repo"]' 2> /dev/null`
-	fi
+	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID")
 
-	echo "$GIT_REPO_URL"
+	echo $(echo "$RESPONSE" | jq -r ".ssh_url_to_repo")
 }
