@@ -1,6 +1,8 @@
 GITLAB_API_URL=""
 GITLAB_USER_TOKEN=""
 
+CURL="curl --silent --insecure --header \"Accept: application/json\" --header \"Content-type: application/json\""
+
 # Init Gitlab library, use it to set user token
 # param 1: Gitlab User Token
 # param 2: Gitlab api url, optiona, defaults to "https://gitlab.fon.ofi/api/v3"
@@ -14,7 +16,7 @@ function lib-gitlab-init() {
 # return: id of the project, 0 if the project is not found
 function getProjectId() {
 	local PROJECT_NAME="$1"
-	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/search/$PROJECT_NAME")
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/search/$PROJECT_NAME")
 	if [[ $RESPONSE == "[]" ]]; then
 		local PROJECT_ID=0
 	else
@@ -30,7 +32,7 @@ function getProjectId() {
 function getGroupId() {
 	local GROUP_NAME=$1
 
-	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups" | json_pp)
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups")
 
 	local GROUP_ID=$(echo "$RESPONSE" |  jq ".[] | select (.name==\"$GROUP_NAME\") | .id")
 
@@ -39,7 +41,7 @@ function getGroupId() {
 
 # Get the name sof all available groups
 function getGroupNames() {
-	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups")
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups")
 
 	echo "$RESPONSE" | jq -r ".[].name"
 }
@@ -49,7 +51,7 @@ function getGroupNames() {
 function getProjectMembers() {
 	local PROJECT_ID="$1"
 
-	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID/members")
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID/members")
 
 	echo "$RESPONSE"
 }
@@ -60,7 +62,7 @@ function getProjectMembers() {
 function getProjectGroupId() {
 	local PROJECT_ID="$1"
 
-	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID")
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID")
 
 	local GROUP_ID=$(echo "$RESPONSE" | jq ".namespace.id")
 
@@ -72,7 +74,7 @@ function getProjectGroupId() {
 function getGroupMembers() {
 	local GROUP_ID="$1"
 
-	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups/$GROUP_ID/members")
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups/$GROUP_ID/members")
 
 	echo "$RESPONSE" | jq "."
 }
@@ -112,7 +114,7 @@ function createProjectHook() {
 
 	DATA="$DATA}"
 
-	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/projects/$PROJECT_ID/hooks")
+	local RESPONSE=$($CURL --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/projects/$PROJECT_ID/hooks")
 
 	if [[ "$RESPONSE" != *"message"* ]]; then
 		local HOOK_ID=$(echo $RESPONSE | jq ".id")
@@ -139,7 +141,7 @@ function createProject() {
 		DATA="$DATA, \"namespace_id\": \"$GROUP_ID\""
 		DATA="$DATA, \"public\":\"true\", \"issues_enabled\":\"false\", \"merge_requests_enabled\":\"true\"}"
 
-		local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/projects")
+		local RESPONSE=$($CURL --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/projects")
 
 		local MESSAGE=$(echo "$RESPONSE" | jq ".message")
 		if [[ "$MESSAGE" != "" ]]; then
@@ -164,7 +166,27 @@ function createProject() {
 # return: git repository URL
 function getGitUrl() {
 	local PROJECT_ID=$1
-	local RESPONSE=$(curl --silent --insecure --header "Accept: application/json" --header "Content-type: application/json" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID")
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID")
 
 	echo $(echo "$RESPONSE" | jq -r ".ssh_url_to_repo")
+}
+
+# Moves project to group
+# param 1: project id
+# param 2: group id
+# return: 0 for Error, 1 for OK
+function moveProjectToGroup() {
+	PROJECT_ID=$1
+	GROUP_ID=$2
+
+	RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/groups/$GROUP_ID/projects/$PROJECT_ID")
+	MESSAGE=$(echo "$RESPONSE" | jq ".message")
+	if [[ "$MESSAGE" != "" ]]; then
+		log_error "$(echo "$MESSAGE" | jq -r "if . | length > 1 then .name[0] else . end")"
+		RES=0
+	else
+		RES=1
+	fi
+
+	return $RES
 }
