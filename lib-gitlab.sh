@@ -1,7 +1,7 @@
 GITLAB_API_URL=""
 GITLAB_USER_TOKEN=""
 
-CURL="curl --silent --insecure --header \"Accept: application/json\" --header \"Content-type: application/json\""
+CURL="curl --silent --insecure --header 'Accept: application/json' --header 'Content-type: application/json'"
 
 # Init Gitlab library, use it to set user token
 # param 1: Gitlab User Token
