@@ -54,13 +54,13 @@ mc_sendmsg() { echo -e "$*\r" | nc $MCSERVER $MCPORT | tr -d '\r';}
 mc_stats() { mc_sendmsg "stats";}
 
 mc_get_last_items_id() {
-	LastID=$(mc_sendmsg "stats items"|tail -n 2|head -n 1|awk -F':' '{print $2}')
+	local LastID=$(mc_sendmsg "stats items"|tail -n 2|head -n 1|awk -F':' '{print $2}')
 	echo $LastID
 }
 
 mc_list_all_keys() {
 	:>/dev/shm/mc_all_keys_${MCSERVER}_${MCPORT}.txt
-	max_item_num=$(mc_get_last_items_id)
+	local max_item_num=$(mc_get_last_items_id)
 	for i in `seq 1 $max_item_num`; do
 		mc_sendmsg "stats cachedump $i 0" | awk '{print $2}'
 	done >>/dev/shm/mc_all_keys_${MCSERVER}_${MCPORT}.txt
@@ -71,21 +71,24 @@ mc_list_all_keys() {
 mc_get() { mc_sendmsg "get $1" | awk "/^VALUE $1/{a=1;next}/^END/{a=0}a" ;}
 
 mc_touch() {
-	key="$1"
+	local key="$1"
 	shift
+	local exptime
 	let exptime="$1"
 	shift
 	mc_sendmsg "touch $key $exptime"
 }
 
 mc_doset() {
-	command="$1"
+	local command="$1"
 	shift
-	key="$1"
+	local key="$1"
 	shift
+	local exptime
 	let exptime="$1"
 	shift
-	val="$*"
+	local val="$*"
+	local bytes
 	let bytes=$(echo -n "$val"|wc -c)
 	mc_sendmsg "$command $key 0 $exptime $bytes\r\n$val"
 }
