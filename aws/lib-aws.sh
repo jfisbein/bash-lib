@@ -1,11 +1,11 @@
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 
-source "$DIR/lib/lib-log.sh"
-source "$DIR/lib/lib-aws-ec2.sh"
-source "$DIR/lib/lib-aws-iam.sh"
-source "$DIR/lib/lib-aws-dynamodb.sh"
-source "$DIR/lib/lib-aws-s3.sh"
-source "$DIR/lib/lib-aws-apigateway.sh"
+source "$DIR/bash-lib/lib-log.sh"
+source "$DIR/bash-lib/aws/lib-aws-ec2.sh"
+source "$DIR/bash-lib/aws/lib-aws-iam.sh"
+source "$DIR/bash-lib/aws/lib-aws-dynamodb.sh"
+source "$DIR/bash-lib/aws/lib-aws-s3.sh"
+source "$DIR/bash-lib/aws/lib-aws-apigateway.sh"
 
 # Return Cognito pool id by name
 function getCognitoPoolIdByName() {
