@@ -96,39 +96,31 @@ function gitlab-get-group-members() {
 # Adds a web hook to a project
 # param 1: Project Id
 # param 2: web hook url
-# param 3: activate push events
-# param 4: activate issues events
-# param 5: activate merge request events
-# param 5: activate tag push events
+# param 3: activate push events, defaults to true
+# param 4: activate issues events, defaults to false
+# param 5: activate merge request events, defaults to true
+# param 6: activate tag push events, defaults to true
+# param 7: activate note events, defaults to false
+# param 8: enable ssl verification, defaults to false
 function gitlab-create-project-hook() {
 	local PROJECT_ID=$1
-	local HOOK_URL=$2
-	local PUSH_EVENTS=$3
-	local ISSUES_EVENTS=$4
-	local MERGE_REQUESTS_EVENTS=$5
-	local TAG_PUSH_EVENTS=$6
+	local URL=$2
+	local PUSH_EVENTS=${3:-true}
+	local ISSUES_EVENTS=${4:-false}
+	local MERGE_REQUESTS_EVENTS=${5:-true}
+	local TAG_PUSH_EVENTS=${6:-true}
+	local NOTE_EVENTS=${7:-false}
+	local ENABLE_SSL_VERIFICATION=${8:-false}
 
-	local DATA="{\"id\": \"$PROJECT_ID\""
-	DATA="$DATA,  \"url\": \"$HOOK_URL\""
-	if $PUSH_EVENTS; then
-		DATA="$DATA,  \"push_events\": \"true\""
-	fi
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
+	--data-urlencode "url=${URL}" \
+	--data-urlencode "push_events=${PUSH_EVENTS}" \
+	--data-urlencode "issues_events=${ISSUES_EVENTS}" \
+	--data-urlencode "merge_requests_events=${MERGE_REQUESTS_EVENTS}" \
+	--data-urlencode "tag_push_events=${TAG_PUSH_EVENTS}" \
+	--data-urlencode "note_events=${NOTE_EVENTS}" \
+	--data-urlencode "enable_ssl_verification=${ENABLE_SSL_VERIFICATION}" --request POST "$GITLAB_API_URL/projects/$PROJECT_ID/hooks")
 
-	if $ISSUES_EVENTS; then
-		DATA="$DATA,  \"issues_events\": \"true\""
-	fi
-
-	if $MERGE_REQUESTS_EVENTS; then
-		DATA="$DATA,  \"merge_requests_events\": \"true\""
-	fi
-
-	if $TAG_PUSH_EVENTS; then
-		DATA="$DATA,  \"tag_push_events\": \"true\""
-	fi
-
-	DATA="$DATA}"
-
-	local RESPONSE=$($CURL --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/projects/$PROJECT_ID/hooks")
 
 	if [[ "$RESPONSE" != *"message"* ]]; then
 		local HOOK_ID=$(echo $RESPONSE | jq ".id")
@@ -140,22 +132,30 @@ function gitlab-create-project-hook() {
 # Creates a project in Gitlab Repo
 # param 1: Group name
 # param 2: Poject Name
-# param 3: Create hook, options, defaults to true
+# param 3: is public project, defaults to true
+# param 4: enable issues management, defaults to false
+# param 5: enable merge request, defaults to true
 # return: id of the project, 0 if there's any error
 function gitlab-create-project() {
 	local GROUP_NAME="$1"
 	local PROJECT_NAME="$2"
-	local CREATE_HOOK=${3:-true}
+	local PUBLIC=${3:-true}
+	local ISSUES=${4:-false}
+	local MERGE_REQUESTS=${5:-true}
 	local PROJECT_ID=0
 
 	local GROUP_ID=$(gitlab-get-group-id-by-name "$GROUP_NAME")
 
 	if [[ "$GROUP_ID" != "" ]]; then
-		local DATA="{\"name\": \"$PROJECT_NAME\""
-		DATA="$DATA, \"namespace_id\": \"$GROUP_ID\""
-		DATA="$DATA, \"public\":\"true\", \"issues_enabled\":\"false\", \"merge_requests_enabled\":\"true\"}"
 
-		local RESPONSE=$($CURL --data "$DATA" --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/projects")
+		local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
+		--data-urlencode "name=${PROJECT_NAME}" \
+		--data-urlencode "namespace_id=${GROUP_ID}" \
+		--data-urlencode "username=${USERNAME}" \
+		--data-urlencode "public=${PUBLIC}" \
+		--data-urlencode "issues_enabled=${ISSUES}" \
+		--data-urlencode "merge_requests_enabled=${MERGE_REQUESTS}" --request POST "$GITLAB_API_URL/projects")
+
 
 		local MESSAGE=$(echo "$RESPONSE" | jq ".message")
 		if [[ "$MESSAGE" != "" ]]; then
@@ -163,16 +163,28 @@ function gitlab-create-project() {
 			PROJECT_ID=0
 		else
 			PROJECT_ID=$(echo "$RESPONSE" | jq ".id")
-			if $CREATE_HOOK; then
-				local HOOK_ID=$(gitlab-create-project-hook $PROJECT_ID "http://jenkins.fon.ofi:8080/gitlab/build_now" true false true true)
-				log "Created hook $HOOK_ID for project $PROJECT_NAME"
-			fi
 		fi
 	else
 		log_error "Group $GROUP_NAME does not exist"
 	fi
 
 	return "$PROJECT_ID"
+}
+
+function gitlab-add-project-hook() {
+	local PROJECT_ID=$1
+	local URL=$2
+	local PUSH_EVENTS=${3:-true}
+	local ISSUES_EVENTS=${4:-false}
+	local MERGE_REQUESTS_EVENTS=${5:-true}
+	local TAG_PUSH_EVENTS=${6:-true}
+	local NOTE_EVENTS=${7:-false}
+	local ENABLE_SSL_VERIFICATION=${8:-false}
+
+
+		local HOOK_ID=$(gitlab-create-project-hook $PROJECT_ID "http://jenkins.fon.ofi:8080/gitlab/build_now" true false true true)
+		log "Created hook $HOOK_ID for project $PROJECT_NAME"
+
 }
 
 # Gets git repository URL
