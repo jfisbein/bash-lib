@@ -135,6 +135,7 @@ function gitlab-create-project-hook() {
 # param 3: is public project, defaults to true
 # param 4: enable issues management, defaults to false
 # param 5: enable merge request, defaults to true
+# param 6: enable builds, defaults to false
 # return: id of the project, 0 if there's any error
 function gitlab-create-project() {
 	local GROUP_NAME="$1"
@@ -142,6 +143,7 @@ function gitlab-create-project() {
 	local PUBLIC=${3:-true}
 	local ISSUES=${4:-false}
 	local MERGE_REQUESTS=${5:-true}
+	local BUILDS_ENABLED=${6:-false}
 	local PROJECT_ID=0
 
 	local GROUP_ID=$(gitlab-get-group-id-by-name "$GROUP_NAME")
@@ -154,6 +156,7 @@ function gitlab-create-project() {
 		--data-urlencode "username=${USERNAME}" \
 		--data-urlencode "public=${PUBLIC}" \
 		--data-urlencode "issues_enabled=${ISSUES}" \
+		--data-urlencode "builds_enabled=${BUILDS_ENABLED}" \
 		--data-urlencode "merge_requests_enabled=${MERGE_REQUESTS}" --request POST "$GITLAB_API_URL/projects")
 
 
