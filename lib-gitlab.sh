@@ -21,6 +21,7 @@ function gitlab-init() {
 		local USERNAME="$1"
 		local PASSWORD="$2"
 		GITLAB_API_URL="$3"
+
 		GITLAB_USER_TOKEN=$(gitlab-get-token-for-credentials "$USERNAME" "$PASSWORD")
 	fi
 }
@@ -34,7 +35,7 @@ function gitlab-get-project-id-by-name() {
 	if [[ $RESPONSE == "[]" ]]; then
 		local PROJECT_ID=0
 	else
-		PROJECT_ID=$(echo "$RESPONSE" | jq ".[0].id")
+		local PROJECT_ID=$(echo "$RESPONSE" | jq ".[0].id")
 	fi
 
 	echo $PROJECT_ID
@@ -136,6 +137,8 @@ function gitlab-create-project-hook() {
 # param 4: enable issues management, defaults to false
 # param 5: enable merge request, defaults to true
 # param 6: enable builds, defaults to false
+# param 7: enable wiki, defaults to true
+# param 8: enable snippets, defaults to true
 # return: id of the project, 0 if there's any error
 function gitlab-create-project() {
 	local GROUP_NAME="$1"
@@ -144,6 +147,8 @@ function gitlab-create-project() {
 	local ISSUES=${4:-false}
 	local MERGE_REQUESTS=${5:-true}
 	local BUILDS_ENABLED=${6:-false}
+	local WIKI_ENABLED=${7:-true}
+	local SNIPPETS_ENABLED=${8:-true}
 	local PROJECT_ID=0
 
 	local GROUP_ID=$(gitlab-get-group-id-by-name "$GROUP_NAME")
@@ -153,10 +158,11 @@ function gitlab-create-project() {
 		local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
 		--data-urlencode "name=${PROJECT_NAME}" \
 		--data-urlencode "namespace_id=${GROUP_ID}" \
-		--data-urlencode "username=${USERNAME}" \
 		--data-urlencode "public=${PUBLIC}" \
 		--data-urlencode "issues_enabled=${ISSUES}" \
 		--data-urlencode "builds_enabled=${BUILDS_ENABLED}" \
+		--data-urlencode "wiki_enabled=${WIKI_ENABLED}" \
+		--data-urlencode "snippets_enabled=${SNIPPETS_ENABLED}" \
 		--data-urlencode "merge_requests_enabled=${MERGE_REQUESTS}" --request POST "$GITLAB_API_URL/projects")
 
 
@@ -223,7 +229,9 @@ function gitlab-create-user() {
 	--data-urlencode "name=${NAME}" \
 	--data-urlencode "confirm=${CONFIRM}" --request POST "$GITLAB_API_URL/users")
 
-	echo "$RESPONSE" | jq -r ".id"
+	local USER_ID=$(echo "$RESPONSE" | jq -r ".id")
+
+	echo $USER_ID
 }
 
 function gitlab-get-token-for-credentials() {
@@ -235,8 +243,8 @@ function gitlab-get-token-for-credentials() {
 }
 
 function gitlab-settings() {
-	local SIGNUP_ENABLED=${1,,}
-	local TWITTER_SHARING_ENABLED=${2,,}
+	local SIGNUP_ENABLED=${1}
+	local TWITTER_SHARING_ENABLED=${2}
 
 	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
 	--data-urlencode "signup_enabled=${SIGNUP_ENABLED}" \
