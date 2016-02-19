@@ -12,12 +12,12 @@ function log() {
 
 # log error message
 function log_error() {
-	echo -e "$ESC_ERROR$*$ESC_RESET"
+	>&2 echo -e "$ESC_ERROR$*$ESC_RESET"
 }
 
 # log warn message
 function log_warn() {
-	echo -e "$ESC_WARN$*$ESC_RESET"
+	>&2 echo -e "$ESC_WARN$*$ESC_RESET"
 }
 
 # log step using $1 as step char, if not defined '.' will be used
