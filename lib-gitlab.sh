@@ -158,7 +158,7 @@ function gitlab-create-project() {
 
 
 		local MESSAGE=$(echo "$RESPONSE" | jq ".message")
-		if [[ "$MESSAGE" != "" ]]; then
+		if [[ "$MESSAGE" != "null" ]]; then
 			log_error "$(echo "$MESSAGE" | jq -r "if . | length > 1 then .name[0] else . end")"
 			PROJECT_ID=0
 		else
@@ -168,23 +168,7 @@ function gitlab-create-project() {
 		log_error "Group $GROUP_NAME does not exist"
 	fi
 
-	return "$PROJECT_ID"
-}
-
-function gitlab-add-project-hook() {
-	local PROJECT_ID=$1
-	local URL=$2
-	local PUSH_EVENTS=${3:-true}
-	local ISSUES_EVENTS=${4:-false}
-	local MERGE_REQUESTS_EVENTS=${5:-true}
-	local TAG_PUSH_EVENTS=${6:-true}
-	local NOTE_EVENTS=${7:-false}
-	local ENABLE_SSL_VERIFICATION=${8:-false}
-
-
-		local HOOK_ID=$(gitlab-create-project-hook $PROJECT_ID "http://jenkins.fon.ofi:8080/gitlab/build_now" true false true true)
-		log "Created hook $HOOK_ID for project $PROJECT_NAME"
-
+	echo "$PROJECT_ID"
 }
 
 # Gets git repository URL
