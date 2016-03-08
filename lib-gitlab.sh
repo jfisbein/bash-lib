@@ -234,6 +234,9 @@ function gitlab-create-user() {
 	echo $USER_ID
 }
 
+# Get the user token for the provided user credentials
+# param 1: User username
+# param 2: User password
 function gitlab-get-token-for-credentials() {
 	local USERNAME="$1"
 	local PASSWORD="$2"
@@ -242,6 +245,9 @@ function gitlab-get-token-for-credentials() {
 	echo "$RESPONSE" | jq -r ".private_token"
 }
 
+# Modify GitLab settings
+# param 1: Enable SignUp (boolean)
+# param 2: Enable Twitter Sharing (boolean)
 function gitlab-settings() {
 	local SIGNUP_ENABLED=${1}
 	local TWITTER_SHARING_ENABLED=${2}
@@ -252,16 +258,23 @@ function gitlab-settings() {
 	--request PUT "$GITLAB_API_URL/application/settings")
 }
 
+# Private - Get Api Path
+# param 1: Path to get
 function gitlab-get-path() {
 	local PATH=$1
 	$CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "${GITLAB_API_URL}${PATH}"
 }
 
+# Get User Id for the username
+# param 1: username
 function get-user-id-by-user-name() {
 	local USERNAME="$1"
 	gitlab-get-path "/users?search=$USERNAME" | jq -r ".[].id"
 }
 
+# Update user password
+# param 1: User username
+# param 2: New user password
 function gitlab-update-user-password() {
 	local USERNAME=$1
 	local NEW_PASSOWRD="$2"
@@ -270,4 +283,23 @@ function gitlab-update-user-password() {
 	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
 	--data-urlencode "password=${NEW_PASSOWRD}" \
 	--request PUT "$GITLAB_API_URL/users/$USER_ID")
+}
+
+# Get GitLab users paged
+# param 1: page number
+# param 2: page size
+function gitlab-get-users() {
+	local PAGE=${1:-1}
+	local PER_PAGE=${2:-10}
+	gitlab-get-path "/users?page=$PAGE&per_page=$PER_PAGE" | jq -r "."
+}
+
+# Get basic info for gilab users (Name + Email + Creation Date)
+# param 1: page number
+# param 2: page size
+function gitlab-get-users-basic-info() {
+	local PAGE=${1:-1}
+	local PER_PAGE=${2:-10}
+
+	gitlab-get-users $PAGE $PER_PAGE | jq -r '.[] | .name + " - " +.email + " - " + .created_at'
 }
