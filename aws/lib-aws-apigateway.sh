@@ -1,5 +1,5 @@
 # Get Resource id
-function getResourceId() {
+function apigateway-get-resource-id() {
 	local API_ID=$1
 	local RESOURCE_PATH=$2
 
@@ -10,7 +10,7 @@ function getResourceId() {
 
 
 # Get Api id from Api name
-function getApiIdByName() {
+function apigateway-get-api-id-by-name() {
 	local API_NAME=$1
 
 	local API_ID=$(aws apigateway get-rest-apis --query "items[?name=='$API_NAME'].id" --output text)
@@ -19,14 +19,14 @@ function getApiIdByName() {
 }
 
 # Associate Api Method to Lambda function
-function bindMethodToLambdaFunction() {
+function apigateway-bind-method-to-lambda-function() {
 	local API_ID=$1
 	local RESOURCE_ID=$2
 	local METHOD=$3
 	local LAMBDA_FUNCTION_NAME=$4
 	local REQUEST_TEMPLATES=${5:-"{}"}
 
-	local LAMBDA_ARN=$(getLambdaArnByName "$LAMBDA_FUNCTION_NAME")
+	local LAMBDA_ARN=$(lambda-get-arn-by-name "$LAMBDA_FUNCTION_NAME")
 	local REGION=$(aws configure get region)
 
 	local LAMBDA_URI="arn:aws:apigateway:$REGION:lambda:path/2015-03-31/functions/$LAMBDA_ARN/invocations"
@@ -36,7 +36,7 @@ function bindMethodToLambdaFunction() {
 
 
 # Add needed CORS headers to Api Method
-function configureCorsToMethod() {
+function apigateway-configure-cors-to-method() {
 	local API_ID=$1
 	local RESOURCE_ID=$2
 	local METHOD=$3
