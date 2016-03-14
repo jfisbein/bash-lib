@@ -1,5 +1,5 @@
 # Detach all user-policies for the username
-function detachPoliciesByUserName() {
+function iam-detach-policies-by-username() {
 	local USER_NAME=$1
 
 	local POLICIES=$(aws iam list-attached-user-policies --user-name $USER_NAME --query "AttachedPolicies[].PolicyArn"  --output text)
@@ -10,7 +10,7 @@ function detachPoliciesByUserName() {
 }
 
 # Delete all access-keys for the username
-function deleteAccessKeysByUsername() {
+function iam-delete-access-keys-by-username() {
 	local USER_NAME=$1
 	local ACCESS_KEYS=$(aws iam list-access-keys --user-name $USER_NAME --query "AccessKeyMetadata[].AccessKeyId" --output text)
 	for KEY in $ACCESS_KEYS; do
@@ -20,16 +20,16 @@ function deleteAccessKeysByUsername() {
 }
 
 # Delete username, after deleting his access-keys and detaching his policies
-function deleteUserByUserName() {
+function iam-delete-user-by-username() {
 	local USER_NAME=$1
-	detachPoliciesByUserName $USER_NAME
-	deleteAccessKeysByUsername $USER_NAME
+	iam-detach-policies-by-username $USER_NAME
+	iam-delete-access-keys-by-username $USER_NAME
 	log "deleting user $USER_NAME"
 	aws iam delete-user --user-name $USER_NAME
 }
 
 # Creates iam policy and return the associated arn
-function createPolicy() {
+function iam-create-policy() {
 	local POLICY_NAME=$1
 	local POLICY_DESC=$2
 	local POLICY_DOC=$3
@@ -40,7 +40,7 @@ function createPolicy() {
 }
 
 # Return the policy arn by the name
-function getPolicyArnByName() {
+function iam-get-policy-arn-by-name() {
 	local POLICY_NAME=$1
 	local ARN=$(aws iam list-policies --query "Policies[?PolicyName=='$POLICY_NAME'].Arn" --output text)
 
@@ -49,7 +49,7 @@ function getPolicyArnByName() {
 
 # Create iam Role
 # Return Role arn
-function createRole() {
+function iam-create-role() {
 	local ROLE_NAME=$1
 	local ROLE_DOC=$2
 
@@ -63,7 +63,7 @@ function createRole() {
 }
 
 # Delete a Role after detaching all his policies
-function deleteRole() {
+function iam-delete-role() {
 	local ROLE_NAME=$1
 
 	local POLICIES=$(aws iam list-attached-role-policies --role-name "$ROLE_NAME" --query "AttachedPolicies[].PolicyArn" --output text)
@@ -76,7 +76,7 @@ function deleteRole() {
 }
 
 # Delete a Policy and all his versions
-function deletePolicy() {
+function iam-delete-policy() {
 	local POLICY_ARN=$1
 	local VERSIONS=$(aws iam list-policy-versions --policy-arn "$POLICY_ARN" --query "Versions[?to_string(IsDefaultVersion)=='false'].VersionId" --output text)
 
@@ -88,7 +88,7 @@ function deletePolicy() {
 
 # Verify if a Role exists
 # Return 0 if the Role exists, 1 otherwise
-function roleExists() {
+function iam-role-exists() {
 	local ROLE_NAME=$1
 
 	aws iam get-role --role-name "$ROLE_NAME" &>/dev/null
@@ -98,7 +98,7 @@ function roleExists() {
 
 # Verify if a Policy exists
 # Return 0 if the Policy exists, 1 otherwise
-function policyExists() {
+function iam-policy-exists() {
 	local POLICY_ARN=$1
 
 	aws iam get-policy --policy-arn "$POLICY_ARN" &>/dev/null
@@ -108,7 +108,7 @@ function policyExists() {
 
 # Verify if a Role and a Policy are attached
 # Return 0 if they are attached, 1 otherwise
-function rolePolicyAttached() {
+function iam-role-policy-attached() {
 	local ROLE_NAME=$1
 	local POLICY_NAME=$2
 	
