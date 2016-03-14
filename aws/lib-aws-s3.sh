@@ -1,5 +1,5 @@
 # Return website URL for a S3 Bucket
-function getS3WebsiteURL() {
+function s3-get-website-url() {
 	local BUCKET_NAME=$1
 	local INDEX_DOC=$(aws s3api get-bucket-website --bucket "$BUCKET_NAME" --query "IndexDocument.Suffix" --output text)
 	local BUCKET_REGION=$(aws s3api get-bucket-location --bucket "$BUCKET_NAME" --query "LocationConstraint" --output text)
@@ -12,7 +12,7 @@ function getS3WebsiteURL() {
 }
 
 # Create S3 Bucket and configure website
-function createS3Website() {
+function s3-create-website() {
 	local BUCKET_NAME=$1
 	local INDEX_DOC=${2:-index.html}
 	local ERROR_DOC=${3:-error.html}
@@ -32,7 +32,7 @@ function createS3Website() {
 		local POLICY=$(sed "s/%BUCKET_NAME%/$BUCKET_NAME/g" iam/WebsiteBucketPolicy.json.template)
 		aws s3api put-bucket-policy --bucket "$BUCKET_NAME" --policy "$POLICY"
 
-		echo $(getS3WebsiteURL $BUCKET_NAME)
+		echo $(s3-get-website-url $BUCKET_NAME)
 		return 0
 	else
 		return 255
@@ -40,16 +40,16 @@ function createS3Website() {
 }
 
 # Update S3 website content
-function updateS3Website() {
+function s3-update-website() {
 	local ORIGIN_PATH=$1
 	local BUCKET_NAME=$2
 	aws s3 sync "$ORIGIN_PATH" "s3://$BUCKET_NAME" --delete &>/dev/null
 
-	echo $(getS3WebsiteURL $BUCKET_NAME)
+	echo $(s3-get-website-url $BUCKET_NAME)
 }
 
 # Delete S3 Bucket associated with a website
-function deleteS3Website() {
+function s3-delete-website() {
 	local BUCKET_NAME=$1
 	aws s3 rm "s3://$BUCKET_NAME" --recursive
 	aws s3 rb "s3://$BUCKET_NAME" --force
@@ -57,7 +57,7 @@ function deleteS3Website() {
 }
 
 # Verify if a S3 Bucket exists
-function bucketExist() {
+function s3-bucket-exist() {
 	local BUCKET_NAME=$1
 
 	if [[ $(aws s3api list-buckets --query "Buckets[?Name=='$BUCKET_NAME'] | length (@)") == "1" ]]; then
