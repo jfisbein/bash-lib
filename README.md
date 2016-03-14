@@ -3,7 +3,7 @@ Bash Libraries
 
 This project host a bunch of bash libraries created by myself.
 
-+ lib-git.sh: git methods like `getNumberOfUntrackedFiles` or `checkIfTagExists`
++ lib-git.sh: git methods like `git-get-number-of-untracked-files` or `git-check-if-tag-exists`
 + lib-gitlab.sh: library to use gitlab api.
 + lib-log.sh: ANSI color logging
 + lib-memcache.sh: simple client for memcache
