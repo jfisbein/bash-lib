@@ -45,8 +45,8 @@ function lambda-get-arn-by-name() {
 }
 
 function get-list-size() {
-	LIST=$1
-	COUNTER=0
+	local LIST=$1
+	local COUNTER=0
 	for ELEM in $LIST; do
 		((COUNTER+=1))
 	done
