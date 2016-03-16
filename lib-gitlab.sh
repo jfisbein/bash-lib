@@ -54,7 +54,7 @@ function gitlab-get-group-id-by-name() {
 	echo $GROUP_ID
 }
 
-# Get the name sof all available groups
+# Get the names of all available groups
 function gitlab-get-group-names() {
 	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups")
 
@@ -64,7 +64,7 @@ function gitlab-get-group-names() {
 # Get list of project members
 # param 1: Project id
 function gitlab-get-project-members() {
-	local PROJECT_ID="$1"
+	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
 
 	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID/members")
 
@@ -75,7 +75,7 @@ function gitlab-get-project-members() {
 # param 1: Project id
 # return: id of the group, 0 if the project is not found
 function gitlab-get-group-id-by-project-id() {
-	local PROJECT_ID="$1"
+	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
 
 	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID")
 
@@ -104,7 +104,7 @@ function gitlab-get-group-members() {
 # param 7: activate note events, defaults to false
 # param 8: enable ssl verification, defaults to false
 function gitlab-create-project-hook() {
-	local PROJECT_ID=$1
+	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
 	local URL=$2
 	local PUSH_EVENTS=${3:-true}
 	local ISSUES_EVENTS=${4:-false}
@@ -184,7 +184,7 @@ function gitlab-create-project() {
 # param 1: project id
 # return: git repository URL
 function gitlab-get-git-url() {
-	local PROJECT_ID=$1
+	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
 	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID")
 
 	echo $(echo "$RESPONSE" | jq -r ".ssh_url_to_repo")
@@ -302,4 +302,42 @@ function gitlab-get-users-basic-info() {
 	local PER_PAGE=${2:-10}
 
 	gitlab-get-users $PAGE $PER_PAGE | jq -r '.[] | .name + " - " +.email + " - " + .created_at'
+}
+
+function gitlab-get-projects-ids() {
+	gitlab-get-path "/projects/all?per_page=2000" | jq -r ".[].id"
+}
+
+function gitlab-get-project-hooks-url() {
+	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	gitlab-get-path "/projects/${PROJECT_ID}/hooks" | jq -r ".[].url"
+}
+
+function gitlab-delete-hooks-by-url() {
+	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	local URL="$2"
+	HOOKS_ID=$(gitlab-get-path "/projects/${PROJECT_ID}/hooks" | jq -r "map(select(.url == \"${URL}\")) | .[].id")
+	for ID in $HOOKS_ID; do
+		$CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request DELETE "${GITLAB_API_URL}/projects/$PROJECT_ID/hooks/$ID"
+	done
+}
+
+function gitlab-get-project-fullname-by-id() {
+	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	gitlab-get-path "/projects/${PROJECT_ID}" | jq -r ".path_with_namespace"
+}
+
+# Get a list of projects in a group
+# Param 1: group_name
+function gitlab-get-projects-by-group() {
+	local GROUP_NAME="$1"
+
+	gitlab-get-path "/groups/${GROUP_NAME}" | jq -r ".projects[].name"
+}
+
+function _gitlab-normalize-project-id() {
+	local PROJECT_ID=${1////%2F}
+	PROJECT_ID=${PROJECT_ID//./-}
+
+	echo $PROJECT_ID
 }
