@@ -54,14 +54,13 @@ function jenkins-copy-job() {
 
 
 
-function jenkins-job-update-git-url() {
-	local JOB_FILE="$1"
-	local GIT_URL="$2"
+function jenkins-job-set-git-url() {
+	local GIT_URL="$1"
+	local JOB_FILE="$2"
 
+	EXIST=$(xmlstarlet sel -t -v "count(/*/scm/userRemoteConfigs/hudson.plugins.git.UserRemoteConfig/url)" "$JOB_FILE")
+	if [[ "$EXIST" == "0" ]]; then
+		xmlstarlet ed --inplace --pf --subnode "/*/scm/userRemoteConfigs/hudson.plugins.git.UserRemoteConfig" -t elem -n url "$JOB_FILE"
+	fi
 	xmlstarlet ed --inplace --pf --update '/project/scm/userRemoteConfigs/hudson.plugins.git.UserRemoteConfig/url' --value "$GIT_URL" "$JOB_FILE"
 }
-
-jenkins-init "http://jenkins.fon.ofi:8080/"
-# jenkins-get-job "w4b-themes-default" > /tmp/test_file.xml
-jenkins-job-update-git-url /tmp/test_file.xml "test2@test:merchant/w4b-test.git"
-cat /tmp/test_file.xml
