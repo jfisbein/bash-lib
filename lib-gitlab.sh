@@ -184,10 +184,29 @@ function gitlab-create-project() {
 # param 1: project id
 # return: git repository URL
 function gitlab-get-git-url() {
+	local RESPONSE=$(gitlab-get-project "$1")
+
+	echo $(echo "$RESPONSE" | jq -r ".ssh_url_to_repo")
+}
+
+# Get project json definition
+# param 1: project id
+# return project information in json format
+function gitlab-get-project() {
 	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
 	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID")
 
-	echo $(echo "$RESPONSE" | jq -r ".ssh_url_to_repo")
+	echo "$RESPONSE"
+}
+
+function gitlab-get-project-id() {
+	local RESPONSE=$(gitlab-get-project "$1")
+	local MESSAGE=$(echo $RESPONSE | jq -r ".message")
+	if [[ "$MESSAGE" == "null" ]]; then
+		echo $(echo "$RESPONSE" | jq -r ".id")
+	else
+		echo "0"
+	fi
 }
 
 # Moves project to group
@@ -308,11 +327,16 @@ function gitlab-get-projects-ids() {
 	gitlab-get-path "/projects/all?per_page=2000" | jq -r ".[].id"
 }
 
+# Get the list of project's hooks
+# param 1: project id
 function gitlab-get-project-hooks-url() {
 	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
 	gitlab-get-path "/projects/${PROJECT_ID}/hooks" | jq -r ".[].url"
 }
 
+# Delete all the hook of a project that matchs the url
+# param 1: project id
+# param 2: hook url
 function gitlab-delete-hooks-by-url() {
 	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
 	local URL="$2"
