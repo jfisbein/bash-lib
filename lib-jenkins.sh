@@ -79,5 +79,14 @@ function jenkins-job-set-git-url() {
 	if [[ "$EXIST" == "0" ]]; then
 		xmlstarlet ed --inplace --pf --subnode "/*/scm/userRemoteConfigs/hudson.plugins.git.UserRemoteConfig" -t elem -n url "$JOB_FILE"
 	fi
-	xmlstarlet ed --inplace --pf --update '/project/scm/userRemoteConfigs/hudson.plugins.git.UserRemoteConfig/url' --value "$GIT_URL" "$JOB_FILE"
+	xmlstarlet ed --inplace --pf --update '/*/scm/userRemoteConfigs/hudson.plugins.git.UserRemoteConfig/url' --value "$GIT_URL" "$JOB_FILE"
+}
+
+# Checks if a job exists in jenkins
+# Param 1: Job name
+# return 0 if job exists, other value otherwise.
+function jenkins-job-exists() {
+	local PROJECT=$1
+	jenkins-get-job $PROJECT &> /dev/null
+	return $?
 }
