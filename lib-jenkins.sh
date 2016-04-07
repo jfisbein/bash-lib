@@ -105,3 +105,13 @@ function jenkins-get-view() {
 	$JENKINS get-view $VIEW_NAME 2> /dev/null
 	return $?
 }
+
+# Puts Jenkins into the quiet mode, wait for existing builds to be completed, and then restart Jenkins.
+function jenkins-safe-restart() {
+	$JENKINS safe-restart
+}
+
+# Restart Jenkins.
+function jenkins-restart() {
+	$JENKINS restart
+}
