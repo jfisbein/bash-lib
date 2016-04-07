@@ -90,3 +90,18 @@ function jenkins-job-exists() {
 	jenkins-get-job $PROJECT &> /dev/null
 	return $?
 }
+
+# Lists all jobs in a specific view or item group.
+# Param 1: View name (empty for all jobs)
+function jenkins-list-jobs() {
+	local VIEW_NAME=${1:-''}
+	$JENKINS list-jobs $VIEW_NAME
+}
+
+# Dumps the view definition XML to stdout.
+# Param 1: View name
+function jenkins-get-view() {
+	local VIEW_NAME="$1"
+	$JENKINS get-view $VIEW_NAME 2> /dev/null
+	return $?
+}
