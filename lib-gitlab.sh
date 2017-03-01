@@ -47,7 +47,7 @@ function gitlab-get-project-id-by-name() {
 function gitlab-get-group-id-by-name() {
 	local GROUP_NAME=$1
 
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups")
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups?search=$GROUP_NAME")
 
 	local GROUP_ID=$(echo "$RESPONSE" |  jq ".[] | select (.name==\"$GROUP_NAME\") | .id")
 
@@ -56,7 +56,7 @@ function gitlab-get-group-id-by-name() {
 
 # Get the names of all available groups
 function gitlab-get-group-names() {
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups")
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups?per_page=100")
 
 	echo "$RESPONSE" | jq -r ".[].name"
 }
@@ -324,7 +324,28 @@ function gitlab-get-users-basic-info() {
 }
 
 function gitlab-get-projects-ids() {
-	gitlab-get-path "/projects/all?per_page=2000" | jq -r ".[].id"
+	gitlab-get-path "/projects/all?simple=true&per_page=2000" | jq -r ".[].id"
+}
+
+function gitlab-get-projects-ids-by-visibility() {
+	local VISIBILITY=$1
+	gitlab-get-path "/projects/all?simple=true&visibility=$VISIBILITY&per_page=2000" | jq -r ".[].id"
+}
+
+function gitlab-set-project-visibility() {
+	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	local VISIBILITY=${2,,}
+	if [[ "$VISIBILITY" == "private" ]]; then
+		local VISIBILITY_LEVEL=0
+	elif [[ "$VISIBILITY" == "internal" ]]; then
+		local VISIBILITY_LEVEL=10
+	elif [[ "$VISIBILITY" == "public" ]]; then
+		local VISIBILITY_LEVEL=20
+	fi
+
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
+	--data-urlencode "visibility_level=${VISIBILITY_LEVEL}" \
+	--request PUT "$GITLAB_API_URL/projects/$PROJECT_ID")
 }
 
 # Get the list of project's hooks
