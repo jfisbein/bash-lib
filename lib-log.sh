@@ -43,6 +43,9 @@ function log_step() {
 	echo -ne "$ESC_OK$STEP_CHAR$ESC_RESET"
 }
 
+# Log message using desired color
+# Param 1: color
+# Param 2: message
 function log_color() {
     local COLOR="${1}"
     shift
