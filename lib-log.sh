@@ -1,8 +1,25 @@
+#COLORS
+RED="\e[31m"
+RED_LIGHT="\e[91m"
+GREEN="\e[32m"
+GREEN_LIGHT="\e[92m"
+YELLOW="\e[33m"
+YELLOW_LIGHT="\e[93m"
+BLUE="\e[34m"
+BLUE_LIGHT="\e[94m"
+MAGENTA="\e[35m"
+MAGENTA_LIGHT="\e[95m"
+CYAN="\e[36m"
+CYAN_LIGHT="\e[96m"
+GRAY_LIGHT="\e[37m"
+GRAY_DARK="\e[90m"
+WHITE="\e[97m"
+
 # Escape codes for messages.
 # more at: http://misc.flogisoft.com/bash/tip_colors_and_formatting
-ESC_OK="\e[32m"     # Green
-ESC_ERROR="\e[31m"  # Red
-ESC_WARN="\e[93m"   # Yellow
+ESC_OK=${GREEN}
+ESC_ERROR=${RED}
+ESC_WARN=${YELLOW}
 ESC_RESET="\e[0m"   # Reset
 
 # log message
@@ -24,6 +41,12 @@ function log_warn() {
 function log_step() {
 	local STEP_CHAR=${1:-'.'}
 	echo -ne "$ESC_OK$STEP_CHAR$ESC_RESET"
+}
+
+function log_color() {
+    local COLOR="${1}"
+    shift
+    echo -e "$COLOR$*$ESC_RESET"
 }
 
 # Get the current row of the cursor
@@ -70,7 +93,7 @@ function log_wait() {
         tput cup ${ROW} 0
         echo -n "${BLANK_TEXT}"
         tput cup ${ROW} 0
-        echo -n -e "${ESC_OK}${MSG} ${I}${ESC_RESET}"
+        echo -n -e "${ESC_OK}${MSG}${ESC_RESET} ${I}"
         sleep 1s
     done
     ROW=$(getCursorRow)
