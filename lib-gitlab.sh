@@ -1,26 +1,26 @@
 GITLAB_API_URL=""
 GITLAB_USER_TOKEN=""
 
-CURL="/usr/bin/curl --silent --insecure --header 'Accept: application/json' --header 'Content-type: application/json'"
+CURL="/usr/bin/curl --silent --header 'Accept: application/json' --header 'Content-type: application/json'"
 
 # Init Gitlab library, use it to set user token
 # 2 options:
 # Option 1 by user token:
 #   param 1: Gitlab User Token
-#   param 2: Gitlab api url, optional, defaults to "https://gitlab.fon.ofi/api/v3"
+#   param 2: Gitlab api url, optional, defaults to "https://gitlab.clarity.ai/api/v4"
 #
 # Option 2 by username and password:
 #   param 1: username
 #   param 2: password
-#   param 3: Gitlab api url
+#   param 3: Gitlab api url, optional, defaults to "https://gitlab.clarity.ai/api/v4"
 function gitlab-init() {
 	if [ $# -le 2 ]; then
 		GITLAB_USER_TOKEN="$1"
-		GITLAB_API_URL=${2:-"https://gitlab.fon.ofi/api/v3"}
+		GITLAB_API_URL="${2:-"https://gitlab.clarity.ai/api/v4"}"
 	elif [ $# -eq 3 ]; then
 		local USERNAME="$1"
 		local PASSWORD="$2"
-		GITLAB_API_URL="$3"
+		GITLAB_API_URL=${3:-"https://gitlab.clarity.ai/api/v4"}
 
 		GITLAB_USER_TOKEN=$(gitlab-get-token-for-credentials "$USERNAME" "$PASSWORD")
 	fi
@@ -378,6 +378,25 @@ function gitlab-get-projects-by-group() {
 	local GROUP_NAME="$1"
 
 	gitlab-get-path "/groups/${GROUP_NAME}" | jq -r ".projects[].name"
+}
+
+function gilab-get-pipelines-for-project() {
+	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	gitlab-get-path "/projects/${PROJECT_ID}/pipelines"
+}
+
+
+function gitlab-get-pipeline() {
+	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	local PIPELINE_ID=$2
+	gitlab-get-path "/projects/${PROJECT_ID}/pipelines/${PIPELINE_ID}"
+}
+
+function gitlab-get-jobs-by-pipeline(){
+	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	local PIPELINE_ID=$2
+
+	gitlab-get-path "/projects/${PROJECT_ID}/pipelines/${PIPELINE_ID}/jobs"
 }
 
 function _gitlab-normalize-project-id() {
