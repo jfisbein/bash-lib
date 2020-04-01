@@ -1,4 +1,3 @@
-#!/bin/bash
 SLACK_API_URL="https://slack.com/api/"
 TOKEN=""
 

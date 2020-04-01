@@ -15,83 +15,90 @@ CURL="/usr/bin/curl --silent --header 'Accept: application/json' --header 'Conte
 #   param 3: Gitlab api url, optional, defaults to "https://gitlab.clarity.ai/api/v4"
 function gitlab-init() {
 	if [ $# -le 2 ]; then
-		GITLAB_USER_TOKEN="$1"
+		GITLAB_USER_TOKEN="${1}"
 		GITLAB_API_URL="${2:-"https://gitlab.clarity.ai/api/v4"}"
 	elif [ $# -eq 3 ]; then
-		local USERNAME="$1"
-		local PASSWORD="$2"
+		local USERNAME="${1}"
+		local PASSWORD="${2}"
 		GITLAB_API_URL=${3:-"https://gitlab.clarity.ai/api/v4"}
 
-		GITLAB_USER_TOKEN=$(gitlab-get-token-for-credentials "$USERNAME" "$PASSWORD")
+		GITLAB_USER_TOKEN=$(gitlab-get-token-for-credentials "${USERNAME}" "${PASSWORD}")
 	fi
+}
+
+# Private - Get Api Path
+# param 1: Path to get
+function gitlab-get-path() {
+	local PATH=$1
+	$CURL --header "PRIVATE-TOKEN: ${GITLAB_USER_TOKEN}" --request GET "${GITLAB_API_URL}${PATH}"
 }
 
 # Find a project by name and returns the id
 # param 1: Project Name
 # return: id of the project, 0 if the project is not found
 function gitlab-get-project-id-by-name() {
-	local PROJECT_NAME="$1"
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/search/$PROJECT_NAME")
-	if [[ $RESPONSE == "[]" ]]; then
+	local PROJECT_NAME="${1}"
+	local RESPONSE=$(gitlab-get-path "/projects/search/${PROJECT_NAME}")
+	if [[ "${RESPONSE}" == "[]" ]]; then
 		local PROJECT_ID=0
 	else
-		local PROJECT_ID=$(echo "$RESPONSE" | jq ".[0].id")
+		local PROJECT_ID=$(echo "${RESPONSE}" | jq ".[0].id")
 	fi
 
-	echo $PROJECT_ID
+	echo ${PROJECT_ID}
 }
 
 # Finds a group by Name and returns the id
 # param 1: Group name
 # return: Group id
 function gitlab-get-group-id-by-name() {
-	local GROUP_NAME=$1
+	local GROUP_NAME=${1}
 
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups?search=$GROUP_NAME")
+	local RESPONSE=$(gitlab-get-path "/groups?search=${GROUP_NAME}")
 
-	local GROUP_ID=$(echo "$RESPONSE" |  jq ".[] | select (.name==\"$GROUP_NAME\") | .id")
+	local GROUP_ID=$(echo "${RESPONSE}" |  jq ".[] | select (.name==\"${GROUP_NAME}\") | .id")
 
-	echo $GROUP_ID
+	echo ${GROUP_ID}
 }
 
 # Get the names of all available groups
 function gitlab-get-group-names() {
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups?per_page=100")
+	local RESPONSE=$(gitlab-get-path "/groups?per_page=100")
 
-	echo "$RESPONSE" | jq -r ".[].name"
+	echo "${RESPONSE}" | jq -r ".[].name"
 }
 
 # Get list of project members
 # param 1: Project id
 function gitlab-get-project-members() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
 
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID/members")
+	local RESPONSE=$(gitlab-get-path "/projects/${PROJECT_ID}/members")
 
-	echo "$RESPONSE"
+	echo "${RESPONSE}"
 }
 
 # Find a project by name and returns the group id
 # param 1: Project id
 # return: id of the group, 0 if the project is not found
 function gitlab-get-group-id-by-project-id() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
 
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID")
+	local RESPONSE=$(gitlab-get-path "/projects/${PROJECT_ID}")
 
-	local GROUP_ID=$(echo "$RESPONSE" | jq ".namespace.id")
+	local GROUP_ID=$(echo "${RESPONSE}" | jq ".namespace.id")
 
-	return $GROUP_ID
+	return ${GROUP_ID}
 }
 
 # Get list of group members
 # param 1: Group id
 function gitlab-get-group-members() {
-	local GROUP_ID="$1"
+	local GROUP_ID="${1}"
 
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/groups/$GROUP_ID/members")
+	local RESPONSE=$(gitlab-get-path "/groups/${GROUP_ID}/members")
 
-	echo "$RESPONSE" | jq "."
+	echo "${RESPONSE}" | jq "."
 }
 
 # Adds a web hook to a project
@@ -104,8 +111,8 @@ function gitlab-get-group-members() {
 # param 7: activate note events, defaults to false
 # param 8: enable ssl verification, defaults to false
 function gitlab-create-project-hook() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
-	local URL=$2
+	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local URL=${2}
 	local PUSH_EVENTS=${3:-true}
 	local ISSUES_EVENTS=${4:-false}
 	local MERGE_REQUESTS_EVENTS=${5:-true}
@@ -113,21 +120,21 @@ function gitlab-create-project-hook() {
 	local NOTE_EVENTS=${7:-false}
 	local ENABLE_SSL_VERIFICATION=${8:-false}
 
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: ${GITLAB_USER_TOKEN}" \
 	--data-urlencode "url=${URL}" \
 	--data-urlencode "push_events=${PUSH_EVENTS}" \
 	--data-urlencode "issues_events=${ISSUES_EVENTS}" \
 	--data-urlencode "merge_requests_events=${MERGE_REQUESTS_EVENTS}" \
 	--data-urlencode "tag_push_events=${TAG_PUSH_EVENTS}" \
 	--data-urlencode "note_events=${NOTE_EVENTS}" \
-	--data-urlencode "enable_ssl_verification=${ENABLE_SSL_VERIFICATION}" --request POST "$GITLAB_API_URL/projects/$PROJECT_ID/hooks")
+	--data-urlencode "enable_ssl_verification=${ENABLE_SSL_VERIFICATION}" --request POST "${GITLAB_API_URL}/projects/${PROJECT_ID}/hooks")
 
 
 	if [[ "$RESPONSE" != *"message"* ]]; then
-		local HOOK_ID=$(echo $RESPONSE | jq ".id")
+		local HOOK_ID=$(echo ${RESPONSE} | jq ".id")
 	fi
 
-	echo "$HOOK_ID"
+	echo "${HOOK_ID}"
 }
 
 # Creates a project in Gitlab Repo
@@ -153,9 +160,9 @@ function gitlab-create-project() {
 
 	local GROUP_ID=$(gitlab-get-group-id-by-name "$GROUP_NAME")
 
-	if [[ "$GROUP_ID" != "" ]]; then
+	if [[ "${GROUP_ID}" != "" ]]; then
 
-		local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
+		local RESPONSE=$($CURL --header "PRIVATE-TOKEN: ${GITLAB_USER_TOKEN}" \
 		--data-urlencode "name=${PROJECT_NAME}" \
 		--data-urlencode "namespace_id=${GROUP_ID}" \
 		--data-urlencode "public=${PUBLIC}" \
@@ -163,47 +170,46 @@ function gitlab-create-project() {
 		--data-urlencode "builds_enabled=${BUILDS_ENABLED}" \
 		--data-urlencode "wiki_enabled=${WIKI_ENABLED}" \
 		--data-urlencode "snippets_enabled=${SNIPPETS_ENABLED}" \
-		--data-urlencode "merge_requests_enabled=${MERGE_REQUESTS}" --request POST "$GITLAB_API_URL/projects")
+		--data-urlencode "merge_requests_enabled=${MERGE_REQUESTS}" --request POST "${GITLAB_API_URL}/projects")
 
 
-		local MESSAGE=$(echo "$RESPONSE" | jq ".message")
-		if [[ "$MESSAGE" != "null" ]]; then
-			log_error "$(echo "$MESSAGE" | jq -r "if . | length > 1 then .name[0] else . end")"
+		local MESSAGE=$(echo "${RESPONSE}" | jq ".message")
+		if [[ "${MESSAGE}" != "null" ]]; then
+			log_error "$(echo "${MESSAGE}" | jq -r "if . | length > 1 then .name[0] else . end")"
 			PROJECT_ID=0
 		else
-			PROJECT_ID=$(echo "$RESPONSE" | jq ".id")
+			PROJECT_ID=$(echo "${RESPONSE}" | jq ".id")
 		fi
 	else
-		log_error "Group $GROUP_NAME does not exist"
+		log_error "Group ${GROUP_NAME} does not exist"
 	fi
 
-	echo "$PROJECT_ID"
+	echo "${PROJECT_ID}"
 }
 
 # Gets git repository URL
 # param 1: project id
 # return: git repository URL
 function gitlab-get-git-url() {
-	local RESPONSE=$(gitlab-get-project "$1")
+	local RESPONSE=$(gitlab-get-project "${1}")
 
-	echo $(echo "$RESPONSE" | jq -r ".ssh_url_to_repo")
+	echo $(echo "${RESPONSE}" | jq -r ".ssh_url_to_repo")
 }
 
 # Get project json definition
 # param 1: project id
 # return project information in json format
 function gitlab-get-project() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "$GITLAB_API_URL/projects/$PROJECT_ID")
+	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
 
-	echo "$RESPONSE"
+	gitlab-get-path "/projects/${PROJECT_ID}"
 }
 
 function gitlab-get-project-id() {
-	local RESPONSE=$(gitlab-get-project "$1")
-	local MESSAGE=$(echo $RESPONSE | jq -r ".message")
-	if [[ "$MESSAGE" == "null" ]]; then
-		echo $(echo "$RESPONSE" | jq -r ".id")
+	local RESPONSE=$(gitlab-get-project "${1}")
+	local MESSAGE=$(echo ${RESPONSE} | jq -r ".message")
+	if [[ "${MESSAGE}" == "null" ]]; then
+		echo $(echo "${RESPONSE}" | jq -r ".id")
 	else
 		echo "0"
 	fi
@@ -214,19 +220,19 @@ function gitlab-get-project-id() {
 # param 2: group id
 # return: 0 for Error, 1 for OK
 function gitlab-move-project() {
-	local PROJECT_ID=$1
-	local GROUP_ID=$2
+	local PROJECT_ID=${1}
+	local GROUP_ID=${2}
 
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request POST "$GITLAB_API_URL/groups/$GROUP_ID/projects/$PROJECT_ID")
-	local MESSAGE=$(echo "$RESPONSE" | jq ".message")
-	if [[ "$MESSAGE" != "" ]]; then
-		log_error "$(echo "$MESSAGE" | jq -r "if . | length > 1 then .name[0] else . end")"
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: ${GITLAB_USER_TOKEN}" --request POST "${GITLAB_API_URL}/groups/${GROUP_ID}/projects/${PROJECT_ID}")
+	local MESSAGE=$(echo "${RESPONSE}" | jq ".message")
+	if [[ "${MESSAGE}" != "" ]]; then
+		log_error "$(echo "${MESSAGE}" | jq -r "if . | length > 1 then .name[0] else . end")"
 		local RES=0
 	else
 		local RES=1
 	fi
 
-	return $RES
+	return ${RES}
 }
 
 # Creates and user
@@ -235,33 +241,33 @@ function gitlab-move-project() {
 # param 3: User username
 # param 4: User full name
 function gitlab-create-user() {
-	local EMAIL="$1"
-	local PASSWORD="$2"
-	local USERNAME="$3"
-	local NAME="$4"
+	local EMAIL="${1}"
+	local PASSWORD="${2}"
+	local USERNAME="${3}"
+	local NAME="${4}"
 	local CONFIRM="false"
 
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: ${GITLAB_USER_TOKEN}" \
 	--data-urlencode "password=${PASSWORD}" \
 	--data-urlencode "email=${EMAIL}" \
 	--data-urlencode "&username=${USERNAME}" \
 	--data-urlencode "name=${NAME}" \
-	--data-urlencode "confirm=${CONFIRM}" --request POST "$GITLAB_API_URL/users")
+	--data-urlencode "confirm=${CONFIRM}" --request POST "${GITLAB_API_URL}/users")
 
-	local USER_ID=$(echo "$RESPONSE" | jq -r ".id")
+	local USER_ID=$(echo "${RESPONSE}" | jq -r ".id")
 
-	echo $USER_ID
+	echo "${USER_ID}"
 }
 
 # Get the user token for the provided user credentials
 # param 1: User username
 # param 2: User password
 function gitlab-get-token-for-credentials() {
-	local USERNAME="$1"
-	local PASSWORD="$2"
+	local USERNAME="${1}"
+	local PASSWORD="${2}"
 
-	local RESPONSE=$($CURL --data-urlencode "password=${PASSWORD}" --data-urlencode "login=${USERNAME}" --request POST "$GITLAB_API_URL/session")
-	echo "$RESPONSE" | jq -r ".private_token"
+	local RESPONSE=$($CURL --data-urlencode "password=${PASSWORD}" --data-urlencode "login=${USERNAME}" --request POST "${GITLAB_API_URL}/session")
+	echo "${RESPONSE}" | jq -r ".private_token"
 }
 
 # Modify GitLab settings
@@ -271,37 +277,30 @@ function gitlab-settings() {
 	local SIGNUP_ENABLED=${1}
 	local TWITTER_SHARING_ENABLED=${2}
 
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: ${GITLAB_USER_TOKEN}" \
 	--data-urlencode "signup_enabled=${SIGNUP_ENABLED}" \
 	--data-urlencode "twitter_sharing_enabled=${TWITTER_SHARING_ENABLED}" \
-	--request PUT "$GITLAB_API_URL/application/settings")
-}
-
-# Private - Get Api Path
-# param 1: Path to get
-function gitlab-get-path() {
-	local PATH=$1
-	$CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request GET "${GITLAB_API_URL}${PATH}"
+	--request PUT "${GITLAB_API_URL}/application/settings")
 }
 
 # Get User Id for the username
 # param 1: username
 function get-user-id-by-user-name() {
-	local USERNAME="$1"
-	gitlab-get-path "/users?search=$USERNAME" | jq -r ".[].id"
+	local USERNAME="${1}"
+	gitlab-get-path "/users?search=${USERNAME}" | jq -r ".[].id"
 }
 
 # Update user password
 # param 1: User username
 # param 2: New user password
 function gitlab-update-user-password() {
-	local USERNAME=$1
-	local NEW_PASSOWRD="$2"
-	local USER_ID=$(get-user-id-by-user-name "$USERNAME")
+	local USERNAME=${1}
+	local NEW_PASSOWRD="${2}"
+	local USER_ID=$(get-user-id-by-user-name "${USERNAME}")
 
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: ${GITLAB_USER_TOKEN}" \
 	--data-urlencode "password=${NEW_PASSOWRD}" \
-	--request PUT "$GITLAB_API_URL/users/$USER_ID")
+	--request PUT "${GITLAB_API_URL}/users/${USER_ID}")
 }
 
 # Get GitLab users paged
@@ -310,7 +309,7 @@ function gitlab-update-user-password() {
 function gitlab-get-users() {
 	local PAGE=${1:-1}
 	local PER_PAGE=${2:-10}
-	gitlab-get-path "/users?page=$PAGE&per_page=$PER_PAGE" | jq -r "."
+	gitlab-get-path "/users?page=${PAGE}&per_page=${PER_PAGE}" | jq -r "."
 }
 
 # Get basic info for gilab users (Name + Email + Creation Date)
@@ -320,7 +319,7 @@ function gitlab-get-users-basic-info() {
 	local PAGE=${1:-1}
 	local PER_PAGE=${2:-10}
 
-	gitlab-get-users $PAGE $PER_PAGE | jq -r '.[] | .name + " - " +.email + " - " + .created_at'
+	gitlab-get-users ${PAGE} ${PER_PAGE} | jq -r '.[] | .name + " - " +.email + " - " + .created_at'
 }
 
 function gitlab-get-projects-ids() {
@@ -328,30 +327,30 @@ function gitlab-get-projects-ids() {
 }
 
 function gitlab-get-projects-ids-by-visibility() {
-	local VISIBILITY=$1
-	gitlab-get-path "/projects/all?simple=true&visibility=$VISIBILITY&per_page=2000" | jq -r ".[].id"
+	local VISIBILITY=${1}
+	gitlab-get-path "/projects/all?simple=true&visibility=${VISIBILITY}&per_page=2000" | jq -r ".[].id"
 }
 
 function gitlab-set-project-visibility() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
 	local VISIBILITY=${2,,}
-	if [[ "$VISIBILITY" == "private" ]]; then
+	if [[ "${VISIBILITY}" == "private" ]]; then
 		local VISIBILITY_LEVEL=0
-	elif [[ "$VISIBILITY" == "internal" ]]; then
+	elif [[ "${VISIBILITY}" == "internal" ]]; then
 		local VISIBILITY_LEVEL=10
-	elif [[ "$VISIBILITY" == "public" ]]; then
+	elif [[ "${VISIBILITY}" == "public" ]]; then
 		local VISIBILITY_LEVEL=20
 	fi
 
-	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" \
+	local RESPONSE=$($CURL --header "PRIVATE-TOKEN: ${GITLAB_USER_TOKEN}" \
 	--data-urlencode "visibility_level=${VISIBILITY_LEVEL}" \
-	--request PUT "$GITLAB_API_URL/projects/$PROJECT_ID")
+	--request PUT "${GITLAB_API_URL}/projects/${PROJECT_ID}")
 }
 
 # Get the list of project's hooks
 # param 1: project id
 function gitlab-get-project-hooks-url() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
 	gitlab-get-path "/projects/${PROJECT_ID}/hooks" | jq -r ".[].url"
 }
 
@@ -359,42 +358,41 @@ function gitlab-get-project-hooks-url() {
 # param 1: project id
 # param 2: hook url
 function gitlab-delete-hooks-by-url() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
-	local URL="$2"
+	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local URL="${2}"
 	HOOKS_ID=$(gitlab-get-path "/projects/${PROJECT_ID}/hooks" | jq -r "map(select(.url == \"${URL}\")) | .[].id")
-	for ID in $HOOKS_ID; do
-		$CURL --header "PRIVATE-TOKEN: $GITLAB_USER_TOKEN" --request DELETE "${GITLAB_API_URL}/projects/$PROJECT_ID/hooks/$ID"
+	for ID in ${HOOKS_ID}; do
+		$CURL --header "PRIVATE-TOKEN: ${GITLAB_USER_TOKEN}" --request DELETE "${GITLAB_API_URL}/projects/${PROJECT_ID}/hooks/${ID}"
 	done
 }
 
 function gitlab-get-project-fullname-by-id() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
 	gitlab-get-path "/projects/${PROJECT_ID}" | jq -r ".path_with_namespace"
 }
 
 # Get a list of projects in a group
 # Param 1: group_name
 function gitlab-get-projects-by-group() {
-	local GROUP_NAME="$1"
-
+	local GROUP_NAME="${1}"
 	gitlab-get-path "/groups/${GROUP_NAME}" | jq -r ".projects[].name"
 }
 
 function gilab-get-pipelines-for-project() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
+	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
 	gitlab-get-path "/projects/${PROJECT_ID}/pipelines"
 }
 
 
 function gitlab-get-pipeline() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
-	local PIPELINE_ID=$2
+	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PIPELINE_ID=${2}
 	gitlab-get-path "/projects/${PROJECT_ID}/pipelines/${PIPELINE_ID}"
 }
 
 function gitlab-get-jobs-by-pipeline(){
-	local PROJECT_ID=$(_gitlab-normalize-project-id $1)
-	local PIPELINE_ID=$2
+	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PIPELINE_ID=${2}
 
 	gitlab-get-path "/projects/${PROJECT_ID}/pipelines/${PIPELINE_ID}/jobs"
 }

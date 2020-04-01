@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Gist: 11375877
 # Url: https://gist.github.com/goodevilgenius/11375877
@@ -44,53 +44,53 @@ Commands: \n \
 	\t delete key [time] \n \
 	\t stats \n \
 	\t list-all-keys"
-	echo -e $format_usage
+	echo -e ${format_usage}
 }
 
 mc-help() { mc-usage;}
 
-mc-sendmsg() { echo -e "$*\r" | nc $MCSERVER $MCPORT | tr -d '\r';}
+mc-sendmsg() { echo -e "$*\r" | nc ${MCSERVER} ${MCPORT} | tr -d '\r';}
 
 mc-stats() { mc-sendmsg "stats";}
 
 mc-get-last-items-id() {
 	local LastID=$(mc-sendmsg "stats items"|tail -n 2|head -n 1|awk -F':' '{print $2}')
-	echo $LastID
+	echo ${LastID}
 }
 
 mc-list-all-keys() {
 	:>/dev/shm/mc-all-keys-${MCSERVER}-${MCPORT}.txt
 	local max_item_num=$(mc-get-last-items-id)
-	for i in `seq 1 $max_item_num`; do
-		mc-sendmsg "stats cachedump $i 0" | awk '{print $2}'
+	for i in `seq 1 ${max_item_num}`; do
+		mc-sendmsg "stats cachedump ${i} 0" | awk '{print $2}'
 	done >>/dev/shm/mc-all-keys-${MCSERVER}-${MCPORT}.txt
 	sed -i '/^$/d' /dev/shm/mc-all-keys-${MCSERVER}-${MCPORT}.txt
 	cat /dev/shm/mc-all-keys-${MCSERVER}-${MCPORT}.txt
 }
 
-mc-get() { mc-sendmsg "get $1" | awk "/^VALUE $1/{a=1;next}/^END/{a=0}a" ;}
+mc-get() { mc-sendmsg "get ${1}" | awk "/^VALUE ${1}/{a=1;next}/^END/{a=0}a" ;}
 
 mc-touch() {
-	local key="$1"
+	local key="${1}"
 	shift
 	local exptime
-	let exptime="$1"
+	let exptime="${1}"
 	shift
-	mc-sendmsg "touch $key $exptime"
+	mc-sendmsg "touch ${key} ${exptime}"
 }
 
 mc-doset() {
-	local command="$1"
+	local command="${1}"
 	shift
-	local key="$1"
+	local key="${1}"
 	shift
 	local exptime
-	let exptime="$1"
+	let exptime="${1}"
 	shift
 	local val="$*"
 	local bytes
-	let bytes=$(echo -n "$val"|wc -c)
-	mc-sendmsg "$command $key 0 $exptime $bytes\r\n$val"
+	let bytes=$(echo -n "${val}"|wc -c)
+	mc-sendmsg "${command} ${key} 0 ${exptime} ${bytes}\r\n${val}"
 }
 
 mc-set() { mc-doset set "$@";}
@@ -106,7 +106,7 @@ mc-decr() { mc-sendmsg decr "$*";}
 mc-superpurge() {
 	mc-list-all-keys > /dev/null
 	if [ ! -z "/dev/shm/mc-all-keys-${MCSERVER}-${MCPORT}.txt" ];then
-		grep "$1" /dev/shm/mc-all-keys-${MCSERVER}-${MCPORT}.txt >/dev/shm/temp.swap.${MCSERVER}-${MCPORT}.txt
+		grep "${1}" /dev/shm/mc-all-keys-${MCSERVER}-${MCPORT}.txt >/dev/shm/temp.swap.${MCSERVER}-${MCPORT}.txt
 	fi
 	while read keys; do
 		mc-sendmsg "delete ${keys}"
@@ -115,14 +115,14 @@ mc-superpurge() {
 	rm -rf /dev/shm/temp.swap.${MCSERVER}-${MCPORT}.txt
 }
 
-if [ "$(basename "$0" .sh)" = "lib-memcache" ]; then
+if [ "$(basename "${0}" .sh)" = "lib-memcache" ]; then
 
 	MCSERVER="localhost"
 	MCPORT=11211
 
 	while getopts "h:p:" flag
 	do
-		case $flag in
+		case ${flag} in
 			h)
 				MCSERVER=${OPTARG:="localhost"}
 				;;
@@ -130,12 +130,12 @@ if [ "$(basename "$0" .sh)" = "lib-memcache" ]; then
 				MCPORT=${OPTARG:="11211"}
 				;;
 			\?)
-				echo "Invalid option: $OPTARG" >&2
+				echo "Invalid option: ${OPTARG}" >&2
 				;;
 		esac
 	done
 	command="${@:$OPTIND:1}"
-	[ -z "$command" ] && command="usage"
+	[ -z "${command}" ] && command="usage"
 	let OPTIND++
 
 	mc-$command "${@:$OPTIND}"

@@ -25,23 +25,30 @@ ESC_RESET="\e[0m"   # Reset
 
 # log message
 function log() {
-	echo -e "$ESC_OK$*$ESC_RESET"
+	echo -e "${ESC_OK}$*${ESC_RESET}"
 }
 
 # log error message
 function log_error() {
-	>&2 echo -e "$ESC_ERROR$*$ESC_RESET"
+	>&2 echo -e "${ESC_ERROR}$*${ESC_RESET}"
 }
 
 # log warn message
 function log_warn() {
-	>&2 echo -e "$ESC_WARN$*$ESC_RESET"
+	>&2 echo -e "${ESC_WARN}$*${ESC_RESET}"
 }
 
 # log step using $1 as step char, if not defined '.' will be used
 function log_step() {
 	local STEP_CHAR=${1:-'.'}
-	echo -ne "$ESC_OK$STEP_CHAR$ESC_RESET"
+	echo -ne "${ESC_OK}${STEP_CHAR}${ESC_RESET}"
+}
+
+# format and log json
+# param 1: json
+function log_json() {
+	local MSG="$*"
+	echo "$MSG" | jq
 }
 
 # Log message using desired color
@@ -50,7 +57,7 @@ function log_step() {
 function log_color() {
     local COLOR="${1}"
     shift
-    echo -e "$COLOR$*$ESC_RESET"
+    echo -e "${COLOR}$*${ESC_RESET}"
 }
 
 # Get the current row of the cursor
@@ -77,7 +84,7 @@ function repeat() {
         RES="${RES}${TEXT}"
     done
 
-    echo -n "$RES"
+    echo -n "${RES}"
 }
 
 # Print message and wait a number of seconds with a countdown
