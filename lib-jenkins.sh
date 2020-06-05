@@ -1,15 +1,11 @@
-JENKINS_API_URL="http://jenkins.fon.ofi:8080/"
+JENKINS_API_URL=""
 JENKINS=""
 
 # Init Jenkins library, use it to set Jenkins API URL and downloads jenkins-cli.jar
-# Param 1: [Optional] Jenkins API URL (defaults to http://jenkins.fon.ofi:8080/)
+# Param 1: Jenkins API URL
 function jenkins-init() {
-	if [ $# -eq 0 ]; then
-		JENKINS="java -jar jenkins-cli.jar -s ${JENKINS_API_URL}/"
-		_jenkins-download-cli "${JENKINS_API_URL}"
-		return 0
-	elif [ $# -eq 1 ]; then
-		JENKINS_API_URL="$1"
+	if [ $# -eq 1 ]; then
+		JENKINS_API_URL="${1}"
 		JENKINS="java -jar jenkins-cli.jar -s ${JENKINS_API_URL}/"
 		_jenkins-download-cli "${JENKINS_API_URL}"
 		return 0

@@ -12,8 +12,6 @@ function slack-update-status() {
 
     local DATA=$(printf '{"status_text":"%s","status_emoji":"%s","status_expiration":%s}' "${TEXT}" "${EMOJI}" "${EXPIRATION}")
 
-    ##curl --silent --header "Authorization: Bearer ${TOKEN}" --header "Content-type: application/json; charset=utf-8" --data "${DATA}" "${SLACK_API_URL}users.profile.set"
-
     curl --silent -X POST ${SLACK_API_URL}users.profile.set \
         --data-urlencode "profile=${DATA}" \
         --data-urlencode "token=${TOKEN}"

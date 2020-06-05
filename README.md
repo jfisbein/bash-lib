@@ -3,11 +3,14 @@ Bash Libraries
 
 This project host a bunch of bash libraries created by myself.
 
++ lib-clarity-auth.sh: authentication to Clarity
 + lib-git.sh: git methods like `git-get-number-of-untracked-files` or `git-check-if-tag-exists`
 + lib-gitlab.sh: library to use gitlab api.
++ lib-jenkins.sh: jenkins-cli.jar wrapper to interact with Jenkins API
 + lib-log.sh: ANSI color logging
 + lib-memcache.sh: simple client for memcache
-+ lib-jenkins.sh: jenkins-cli.jar wrapper to interact with Jenkins API
++ lib-pushbullet.sh: send pushbullet messages
++ lib-slack.sh: updates slack user status
 + aws/lib-aws.sh includes all the below files:
   + aws/lib-aws-apigateway.sh aws api gateway helper methods
   + aws/lib-aws-dynamodb.sh dynamo db helper methods
