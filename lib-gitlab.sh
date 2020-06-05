@@ -45,7 +45,7 @@ function gitlab-get-project-id-by-name() {
 		local PROJECT_ID=$(echo "${RESPONSE}" | jq ".[0].id")
 	fi
 
-	echo ${PROJECT_ID}
+	echo "${PROJECT_ID}"
 }
 
 # Finds a group by Name and returns the id
@@ -58,7 +58,7 @@ function gitlab-get-group-id-by-name() {
 
 	local GROUP_ID=$(echo "${RESPONSE}" |  jq ".[] | select (.name==\"${GROUP_NAME}\") | .id")
 
-	echo ${GROUP_ID}
+	echo "${GROUP_ID}"
 }
 
 # Get the names of all available groups
@@ -71,7 +71,7 @@ function gitlab-get-group-names() {
 # Get list of project members
 # param 1: Project id
 function gitlab-get-project-members() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PROJECT_ID=$(_gitlab-normalize-project-id "${1}")
 
 	local RESPONSE=$(gitlab-get-path "/projects/${PROJECT_ID}/members")
 
@@ -82,13 +82,13 @@ function gitlab-get-project-members() {
 # param 1: Project id
 # return: id of the group, 0 if the project is not found
 function gitlab-get-group-id-by-project-id() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PROJECT_ID=$(_gitlab-normalize-project-id "${1}")
 
 	local RESPONSE=$(gitlab-get-path "/projects/${PROJECT_ID}")
 
 	local GROUP_ID=$(echo "${RESPONSE}" | jq ".namespace.id")
 
-	return ${GROUP_ID}
+	return "${GROUP_ID}"
 }
 
 # Get list of group members
@@ -111,7 +111,7 @@ function gitlab-get-group-members() {
 # param 7: activate note events, defaults to false
 # param 8: enable ssl verification, defaults to false
 function gitlab-create-project-hook() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PROJECT_ID=$(_gitlab-normalize-project-id "${1}")
 	local URL=${2}
 	local PUSH_EVENTS=${3:-true}
 	local ISSUES_EVENTS=${4:-false}
@@ -131,7 +131,7 @@ function gitlab-create-project-hook() {
 
 
 	if [[ "$RESPONSE" != *"message"* ]]; then
-		local HOOK_ID=$(echo ${RESPONSE} | jq ".id")
+		local HOOK_ID=$(echo "${RESPONSE}" | jq ".id")
 	fi
 
 	echo "${HOOK_ID}"
@@ -193,23 +193,23 @@ function gitlab-create-project() {
 function gitlab-get-git-url() {
 	local RESPONSE=$(gitlab-get-project "${1}")
 
-	echo $(echo "${RESPONSE}" | jq -r ".ssh_url_to_repo")
+	echo "${RESPONSE}" | jq -r ".ssh_url_to_repo"
 }
 
 # Get project json definition
 # param 1: project id
 # return project information in json format
 function gitlab-get-project() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PROJECT_ID=$(_gitlab-normalize-project-id "${1}")
 
 	gitlab-get-path "/projects/${PROJECT_ID}"
 }
 
 function gitlab-get-project-id() {
 	local RESPONSE=$(gitlab-get-project "${1}")
-	local MESSAGE=$(echo ${RESPONSE} | jq -r ".message")
+	local MESSAGE=$(echo "${RESPONSE}" | jq -r ".message")
 	if [[ "${MESSAGE}" == "null" ]]; then
-		echo $(echo "${RESPONSE}" | jq -r ".id")
+		echo "${RESPONSE}" | jq -r ".id"
 	else
 		echo "0"
 	fi
@@ -319,7 +319,7 @@ function gitlab-get-users-basic-info() {
 	local PAGE=${1:-1}
 	local PER_PAGE=${2:-10}
 
-	gitlab-get-users ${PAGE} ${PER_PAGE} | jq -r '.[] | .name + " - " +.email + " - " + .created_at'
+	gitlab-get-users "${PAGE}" "${PER_PAGE}" | jq -r '.[] | .name + " - " +.email + " - " + .created_at'
 }
 
 function gitlab-get-projects-ids() {
@@ -332,7 +332,7 @@ function gitlab-get-projects-ids-by-visibility() {
 }
 
 function gitlab-set-project-visibility() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PROJECT_ID=$(_gitlab-normalize-project-id "${1}")
 	local VISIBILITY=${2,,}
 	if [[ "${VISIBILITY}" == "private" ]]; then
 		local VISIBILITY_LEVEL=0
@@ -350,7 +350,7 @@ function gitlab-set-project-visibility() {
 # Get the list of project's hooks
 # param 1: project id
 function gitlab-get-project-hooks-url() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PROJECT_ID=$(_gitlab-normalize-project-id "${1}")
 	gitlab-get-path "/projects/${PROJECT_ID}/hooks" | jq -r ".[].url"
 }
 
@@ -358,7 +358,7 @@ function gitlab-get-project-hooks-url() {
 # param 1: project id
 # param 2: hook url
 function gitlab-delete-hooks-by-url() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PROJECT_ID=$(_gitlab-normalize-project-id "${1}")
 	local URL="${2}"
 	HOOKS_ID=$(gitlab-get-path "/projects/${PROJECT_ID}/hooks" | jq -r "map(select(.url == \"${URL}\")) | .[].id")
 	for ID in ${HOOKS_ID}; do
@@ -367,7 +367,7 @@ function gitlab-delete-hooks-by-url() {
 }
 
 function gitlab-get-project-fullname-by-id() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PROJECT_ID=$(_gitlab-normalize-project-id "${1}")
 	gitlab-get-path "/projects/${PROJECT_ID}" | jq -r ".path_with_namespace"
 }
 
@@ -379,19 +379,19 @@ function gitlab-get-projects-by-group() {
 }
 
 function gilab-get-pipelines-for-project() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PROJECT_ID=$(_gitlab-normalize-project-id "${1}")
 	gitlab-get-path "/projects/${PROJECT_ID}/pipelines"
 }
 
 
 function gitlab-get-pipeline() {
-	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PROJECT_ID=$(_gitlab-normalize-project-id "${1}")
 	local PIPELINE_ID=${2}
 	gitlab-get-path "/projects/${PROJECT_ID}/pipelines/${PIPELINE_ID}"
 }
 
 function gitlab-get-jobs-by-pipeline(){
-	local PROJECT_ID=$(_gitlab-normalize-project-id ${1})
+	local PROJECT_ID=$(_gitlab-normalize-project-id "${1}")
 	local PIPELINE_ID=${2}
 
 	gitlab-get-path "/projects/${PROJECT_ID}/pipelines/${PIPELINE_ID}/jobs"
@@ -401,5 +401,5 @@ function _gitlab-normalize-project-id() {
 	local PROJECT_ID=${1////%2F}
 	PROJECT_ID=${PROJECT_ID//./-}
 
-	echo $PROJECT_ID
+	echo "${PROJECT_ID}"
 }

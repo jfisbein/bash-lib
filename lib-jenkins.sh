@@ -38,7 +38,7 @@ function jenkins-update-job() {
 	local PROJECT="${1}"
 	local JOB_FILE="${2}"
 
-	cat "${JOB_FILE}" | ${JENKINS} update-job "${PROJECT}"
+	${JENKINS} update-job "${PROJECT}" < "${JOB_FILE}"
 }
 
 # Reload job
