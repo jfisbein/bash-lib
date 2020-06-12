@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Return number of untracked files in actual git repo
 function git-get-number-of-untracked-files() {
 	 git status --porcelain 2>/dev/null | grep -c "^??"

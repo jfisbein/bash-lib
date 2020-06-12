@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 PUSHBULLET_API_URL="https://api.pushbullet.com/v2/"
 PUSHBULLET=""
 

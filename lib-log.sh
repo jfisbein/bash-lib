@@ -1,4 +1,6 @@
+#!/usr/bin/env bash
 # shellcheck disable=SC2148,SC2034
+
 # COLORS
 RED="\e[31m"
 RED_LIGHT="\e[91m"

@@ -1,5 +1,8 @@
+#!/usr/bin/env bash
+
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 source "${DIR}/lib-log.sh"
+source "${DIR}/lib-jwt.sh"
 
 CLARITY_HOST=""
 
@@ -40,8 +43,8 @@ function clarity-get-token-from-refresh-token() {
 
 function clarity-show-token() {
     local TOKEN="${1}"
-    local HEADER=$(echo "${TOKEN}" | cut -d '.' -f 1 | base64 --decode)
-    local PAYLOAD=$(echo "${TOKEN}" | cut -d '.' -f 2 | base64 --decode)
+    local HEADER=$(jwt-get-decoded-header "${TOKEN}")
+    local PAYLOAD=$(jwt-get-decoded-payload "${TOKEN}")
 
     log "Token:"
     log "$TOKEN"

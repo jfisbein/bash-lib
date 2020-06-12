@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 GITLAB_API_URL=""
 GITLAB_USER_TOKEN=""
 

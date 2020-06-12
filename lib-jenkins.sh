@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 JENKINS_API_URL=""
 JENKINS=""
 
