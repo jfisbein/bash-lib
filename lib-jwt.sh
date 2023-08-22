@@ -44,8 +44,37 @@ function jwt-is-valid-json() {
   jq -e . >/dev/null 2>&1 <<<"$JSON"
 }
 
+function jwt-is-wellformed-token() {
+  local TOKEN="${1}"
+  local HEADER=$(jwt-get-decoded-header "${TOKEN}")
+  if [[ "${HEADER}" != "" ]] &&  [[ "${HEADER}" != "null" ]] && jwt-is-valid-json "${HEADER}"; then
+    local PAYLOAD=$(jwt-get-decoded-payload "${TOKEN}")
+    if [[ "${PAYLOAD}" != "" ]] &&  [[ "${PAYLOAD}" != "null" ]] && jwt-is-valid-json "${PAYLOAD}"; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
+function jwt-is-valid-token() {
+  local TOKEN="${1}"
+  local DELTA="${2:-0}"
+
+  if jwt-is-wellformed-token "${TOKEN}"; then
+    local PAYLOAD=$(jwt-get-decoded-payload "${TOKEN}")
+    local EXP_DATE=$(jwt-get-expiration "${PAYLOAD}")
+    ((EXP_DATE=EXP_DATE-DELTA))
+    local CURRENT_TS=$(date +%s)
+    if [[ ${EXP_DATE} > ${CURRENT_TS} ]]; then
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
 function jwt-get-payload-path() {
   local PAYLOAD="${1}"
   local JSON_PATH="${2}"
-  echo "${PAYLOAD}" | jq "${JSON_PATH}"
+  echo "${PAYLOAD}" | jq -r "${JSON_PATH}"
 }
